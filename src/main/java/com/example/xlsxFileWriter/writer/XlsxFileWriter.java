@@ -35,6 +35,8 @@ public class XlsxFileWriter implements XlsxWriter {
         }
 
         long start = System.currentTimeMillis();
+
+//        setting up the basic styles for the workbook
         Font boldFont = getBoldFont(workbook);
         Font genericFont = getGenericFont(workbook);
         CellStyle headerStyle = getLeftAlignedCellStyle(workbook, boldFont);
@@ -44,16 +46,19 @@ public class XlsxFileWriter implements XlsxWriter {
 
         try {
 
+//            using POJO class metadata for the sheet name
             XlsxSheet annotation = data.get(0).getClass().getAnnotation(XlsxSheet.class);
             String sheetName = annotation.value();
             Sheet sheet = workbook.createSheet(sheetName);
 
+//            get the metadata for each field of the POJO class into a list
             List<XlsxField> xlsColumnFields = getFieldNamesForClass(data.get(0).getClass());
 
             int tempRowNo = 0;
             int recordBeginRowNo = 0;
             int recordEndRowNo = 0;
 
+//            set spreadsheet titles
             Row mainRow = sheet.createRow(tempRowNo);
             Cell columnTitleCell;
 
@@ -66,7 +71,10 @@ public class XlsxFileWriter implements XlsxWriter {
 
             recordEndRowNo++;
 
+//            get class of the passed dataset
             Class<?> clazz = data.get(0).getClass();
+
+//            looping the past dataset
             for (T record : data) {
 
                 tempRowNo = recordEndRowNo;
@@ -79,20 +87,27 @@ public class XlsxFileWriter implements XlsxWriter {
                 Method xlsMethod;
                 Object xlsObjValue;
                 ArrayList<Object> objValueList;
+
+//                get max size of the record if its multiple row
                 int maxListSize = getMaxListSize(record, xlsColumnFields, clazz);
 
+
+//                looping through the fields of the current record
                 for (XlsxField xlsColumnField : xlsColumnFields) {
 
+//                    writing a single field
                     if (!xlsColumnField.isAnArray() && !xlsColumnField.isComposite()) {
 
                         writeSingleFieldRow(mainRow, xlsColumnField, clazz, currencyStyle, centerAlignedStyle, genericStyle,
                                 record, workbook);
 
+//                        overlooking the next field and adjusting the starting row
                         if (isNextColumnAnArray(xlsColumnFields, xlsColumnField, clazz, record)) {
                             isRowNoToDecrease = true;
                             tempRowNo = recordBeginRowNo + 1;
                         }
 
+//                        writing an single array field
                     } else if (xlsColumnField.isAnArray() && !xlsColumnField.isComposite()) {
 
                         xlsMethod = getMethod(clazz, xlsColumnField);
@@ -100,6 +115,7 @@ public class XlsxFileWriter implements XlsxWriter {
                         objValueList = (ArrayList<Object>) xlsObjValue;
                         isFirstValue = true;
 
+//                        looping through the items of the single array
                         for (Object objectValue : objValueList) {
 
                             Row childRow;
@@ -123,11 +139,13 @@ public class XlsxFileWriter implements XlsxWriter {
                             }
                         }
 
+ //                        overlooking the next field and adjusting the starting row
                         if (isNextColumnAnArray(xlsColumnFields, xlsColumnField, clazz, record)) {
                             isRowNoToDecrease = true;
                             tempRowNo = recordBeginRowNo + 1;
                         }
 
+//                        writing a composite array field
                     } else if (xlsColumnField.isAnArray() && xlsColumnField.isComposite()) {
 
                         xlsMethod = getMethod(clazz, xlsColumnField);
@@ -135,6 +153,7 @@ public class XlsxFileWriter implements XlsxWriter {
                         objValueList = (ArrayList<Object>) xlsObjValue;
                         isFirstRow = true;
 
+//                        looping through the items of the composite array
                         for (Object objectValue : objValueList) {
 
                             Row childRow;
@@ -166,6 +185,7 @@ public class XlsxFileWriter implements XlsxWriter {
                             }
                         }
 
+//                        overlooking the next field and adjusting the starting row
                         if (isNextColumnAnArray(xlsColumnFields, xlsColumnField, clazz, record)) {
                             isRowNoToDecrease = true;
                             tempRowNo = recordBeginRowNo + 1;
@@ -173,11 +193,12 @@ public class XlsxFileWriter implements XlsxWriter {
                     }
                 }
 
+//                adjusting the ending row number for the current record
                 recordEndRowNo = maxListSize + recordBeginRowNo;
             }
 
+//            auto sizing the columns of the whole sheet
             autoSizeColumns(sheet, xlsColumnFields.size());
-
 
             workbook.write(bos);
             logger.info("Xls file generated in [{}] seconds", processTime(start));
